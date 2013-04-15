@@ -91,6 +91,8 @@ def estimate():
     X = data[:,2:(numCovarsOut + 2)]
     Z = data[:,-numCovarsCost:]
     
+    
+    
     ''' Maximization Script.
     '''
     
@@ -102,18 +104,18 @@ def estimate():
     sys.stdout = open('grmLogging.txt', 'a')
     
     rslt = fmin_bfgs(_maxAlgorihtmInterface, startVals, \
-                     args = (Y, D, X, Z), maxiter = maxiter, \
-                     full_output = True)
-    
+                     args = (Y, D, X, Z), maxiter = maxiter)
+
     sys.stdout = sys.__stdout__
     
     # Construct dictionary with results.
     rslt = _distributeEvaluationValues(rslt, numCovarsOut, True)
+    rslt2 = dict(rslt)
+   
     
     #  Write out the *.json file.
-    with open('grmRslt.json', 'w') as file_:
-        
-        json.dump(initDict, file_)
+    with open('grmRslt.json', 'w') as file_: 
+        json.dump(rslt2, file_)
     
 ''' Private Functions.
 '''
@@ -168,7 +170,6 @@ def _distributeEvaluationValues(x, numCovarsOut, isList = False):
     '''
     #Antibugging.
     assert (isList in [True, False])
-    
     if(isList):
         
         pass
@@ -184,32 +185,34 @@ def _distributeEvaluationValues(x, numCovarsOut, isList = False):
         
     # Distribution of parameters.
     rslt = {}
-
-    rslt['Y1_beta'] = x[:numCovarsOut]
-    rslt['Y0_beta'] = x[numCovarsOut:(2*numCovarsOut)]
     
-    rslt['D_gamma'] = x[(2*numCovarsOut):(-4)]
+    
+    rslt['Y1_beta'] = list(x[:numCovarsOut])
+    rslt['Y0_beta'] = list(x[numCovarsOut:(2*numCovarsOut)])
+    
+    rslt['D_gamma'] = list(x[(2*numCovarsOut):(-4)])
     
     ''' Parameters with natural bounds. 
     '''    
     rslt['U1_var']  = np.exp(x[(-4)])
     rslt['U0_var']  = np.exp(x[(-3)])
 
-    rslt['U1V_rho'] = -1.0 + 2.0/(1.0 + np.exp(-x[-2]))    
-    rslt['U0V_rho'] = -1.0 + 2.0/(1.0 + np.exp(-x[-1])) 
-
+    rslt['U1V_rho'] = -1.0 + 2.0/(1.0 + np.exp(-x[(-2)]))    
+    rslt['U0V_rho'] = -1.0 + 2.0/(1.0 + np.exp(-x[(-1)])) 
+ 
     # Finishing.
     return rslt
+
 
 def _negLogLiklContribution(rslt, Y, D, X, Z):
     ''' Negative log-likelihood function of the Generalized Roy Model.
     
     '''
     # Distribute input.
-    Y1_beta = rslt['Y1_beta']
-    Y0_beta = rslt['Y0_beta']
+    Y1_beta = np.array(rslt['Y1_beta'])
+    Y0_beta = np.array(rslt['Y0_beta'])
 
-    D_gamma = rslt['D_gamma']
+    D_gamma = np.array(rslt['D_gamma'])
 
     U1_var  = rslt['U1_var']
     U0_var  = rslt['U0_var']
@@ -221,6 +224,7 @@ def _negLogLiklContribution(rslt, Y, D, X, Z):
     numAgents = D.shape[0]
 
     # Likelihood calculation.
+
     choiceCoeffs  = np.concatenate((Y1_beta  - Y0_beta, - D_gamma))
     choiceCovars  = np.concatenate((X, Z), axis = 1)
     choiceIndices = np.dot(choiceCoeffs, choiceCovars.T) 
@@ -253,9 +257,15 @@ def _negLogLiklContribution(rslt, Y, D, X, Z):
     #Finishing.        
     return lik
 
+
 ''' Executable.
 '''
 if __name__ == '__main__':
     
     estimate()
+    
+    
+
+    
+    
 
